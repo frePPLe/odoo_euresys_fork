@@ -1981,6 +1981,7 @@ class exporter(object):
             due = self.formatDateTime(
                 j.get("commitment_date", False) or j["date_order"]
             )
+            date_order = self.formatDateTime(j["date_order"])
             priority = 1  # We give all customer orders the same default priority
 
             # Possible sales order status are 'draft', 'sent', 'sale', 'done' and 'cancel'
@@ -2026,6 +2027,7 @@ class exporter(object):
                                 '<demand name=%s batch=%s quantity="%s" due="%s" priority="%s" minshipment="%s" status="%s"><item name=%s/><customer name=%s/><location name=%s/>'
                                 # Disable the next line in frepple < 6.25
                                 '<owner name=%s policy="%s" xsi:type="demand_group"/>'
+                                '<stringproperty name="date_order" value="%s"/>'
                                 "</demand>\n"
                             ) % (
                                 quoteattr(sol_name),
@@ -2049,6 +2051,7 @@ class exporter(object):
                                     if j["picking_policy"] == "one"
                                     else "independent"
                                 ),
+                                date_order,
                             )
                     # We are done with this line, move to the next one
                     continue
@@ -2090,6 +2093,7 @@ class exporter(object):
                 '<demand name=%s batch=%s quantity="%s" due="%s" priority="%s" minshipment="%s" status="%s"><item name=%s/><customer name=%s/><location name=%s/>'
                 # Enable only in frepple >= 6.25
                 # '<owner name=%s policy="%s" xsi:type="demand_group"/>'
+                '<stringproperty name="date_order" value="%s"/>'
                 "</demand>\n"
             ) % (
                 quoteattr(name),
@@ -2105,6 +2109,7 @@ class exporter(object):
                 # Enable only in frepple >= 6.25
                 # quoteattr(i["order_id"][1]),
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
+                date_order,
             )
         yield "</demands>\n"
 
