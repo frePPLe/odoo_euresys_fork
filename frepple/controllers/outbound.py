@@ -1377,6 +1377,20 @@ class exporter(object):
             i["id"]: i for i in self.generator.getData("mrp.secondary.workcenter")
         }
 
+        # Read the product workcenter capacity
+        workcenter_capacity = {}
+        for i in self.generator.getData(
+            "mrp.workcenter.capacity",
+            fields=[
+                "product_id",
+                "workcenter_id",
+                "capacity",
+            ],
+        ):
+            workcenter_capacity[(i["workcenter_id"][0], i["product_id"][0])] = i[
+                "capacity"
+            ]
+
         # Loop over all bom records
         for i in self.generator.getData(
             "mrp.bom",
@@ -1597,7 +1611,7 @@ class exporter(object):
                                 if not exists:
                                     exists = True
                                     yield "<loads>\n"
-                                yield '<load quantity="%f" search=%s><resource name=%s/>%s</load>\n' % (
+                                yield '<load quantity="%f" search=%s><resource name=%s/>%s%s</load>\n' % (
                                     j["time_cycle"],
                                     quoteattr(j["search_mode"]),
                                     quoteattr(
@@ -1606,6 +1620,21 @@ class exporter(object):
                                     (
                                         ("<skill name=%s/>" % quoteattr(j["skill"][1]))
                                         if j["skill"]
+                                        else ""
+                                    ),
+                                    (
+                                        (
+                                            '<stringproperty name="capacity" value="%s"/>'
+                                            % workcenter_capacity.get(
+                                                (
+                                                    j["workcenter_id"][0],
+                                                    product_id,
+                                                )
+                                            )
+                                        )
+                                        if workcenter_capacity.get(
+                                            (j["workcenter_id"][0], product_id)
+                                        )
                                         else ""
                                     ),
                                 )
@@ -1771,7 +1800,7 @@ class exporter(object):
                                 ):
                                     continue
                                 secondary_workcenter_str += (
-                                    '<load quantity="%f" search=%s><resource name=%s/>%s</load>'
+                                    '<load quantity="%f" search=%s><resource name=%s/>%s%s</load>'
                                     % (
                                         (
                                             1
@@ -1796,10 +1825,28 @@ class exporter(object):
                                             if secondary_workcenter["skill"]
                                             else ""
                                         ),
+                                        (
+                                            (
+                                                '<stringproperty name="capacity" value="%s"/>'
+                                                % workcenter_capacity.get(
+                                                    (
+                                                        step["workcenter_id"][0],
+                                                        product_id,
+                                                    )
+                                                )
+                                            )
+                                            if workcenter_capacity.get(
+                                                (
+                                                    step["workcenter_id"][0],
+                                                    product_id,
+                                                )
+                                            )
+                                            else ""
+                                        ),
                                     )
                                 )
 
-                            yield "<suboperation>" '<operation name=%s %spriority="%s" duration_per="%s" xsi:type="operation_time_per">\n' "<location name=%s/>\n" '<loads><load quantity="%f" search=%s><resource name=%s/>%s</load>%s</loads>\n' % (
+                            yield "<suboperation>" '<operation name=%s %spriority="%s" duration_per="%s" xsi:type="operation_time_per">\n' "<location name=%s/>\n" '<loads><load quantity="%f" search=%s><resource name=%s/>%s%s</load>%s</loads>\n' % (
                                 quoteattr(name),
                                 (
                                     ("description=%s " % quoteattr(i["code"]))
@@ -1821,6 +1868,21 @@ class exporter(object):
                                 (
                                     ("<skill name=%s/>" % quoteattr(step["skill"][1]))
                                     if step["skill"]
+                                    else ""
+                                ),
+                                (
+                                    (
+                                        '<stringproperty name="capacity" value="%s"/>'
+                                        % workcenter_capacity.get(
+                                            (
+                                                step["workcenter_id"][0],
+                                                product_id,
+                                            )
+                                        )
+                                    )
+                                    if workcenter_capacity.get(
+                                        (step["workcenter_id"][0], product_id)
+                                    )
                                     else ""
                                 ),
                                 secondary_workcenter_str,
