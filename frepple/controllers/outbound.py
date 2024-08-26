@@ -329,6 +329,7 @@ class exporter(object):
                 "calendar",
                 "manufacturing_warehouse",
                 "respect_reservations",
+                "quote_success_probability",
             ],
         ):
             self.company_id = i["id"]
@@ -338,6 +339,7 @@ class exporter(object):
             self.po_lead = i["po_lead"]
             self.manufacturing_lead = i["manufacturing_lead"]
             self.respect_reservations = i["respect_reservations"]
+            self.quote_success_probability = i["quote_success_probability"]
             try:
                 self.calendar = (
                     i["calendar"]
@@ -1943,7 +1945,18 @@ class exporter(object):
         """
         # Get all sales order lines
         search = (
-            [("product_id", "!=", False)]
+            [
+                ("product_id", "!=", False),
+                (
+                    "|",
+                    ("order_id.state", "not in", ["draft", "sent"]),
+                    (
+                        "order_id.probability",
+                        ">=",
+                        self.quote_success_probability / 100.0,
+                    ),
+                ),
+            ]
             if self.delta >= 999
             else [
                 ("product_id", "!=", False),
@@ -1951,6 +1964,15 @@ class exporter(object):
                     "write_date",
                     ">=",
                     datetime.now() - timedelta(days=self.delta),
+                ),
+                (
+                    "|",
+                    ("order_id.state", "not in", ["draft", "sent"]),
+                    (
+                        "order_id.probability",
+                        ">=",
+                        self.quote_success_probability / 100.0,
+                    ),
                 ),
             ]
         )

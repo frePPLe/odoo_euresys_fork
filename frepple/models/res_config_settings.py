@@ -49,6 +49,9 @@ class ResConfigSettings(models.TransientModel):
     respect_reservations = fields.Boolean(
         related="company_id.respect_reservations", readonly=False
     )
+    quote_success_probability = fields.Float(
+        related="company_id.quote_success_probability", readonly=False
+    )
     disclose_stack_trace = fields.Boolean(
         related="company_id.disclose_stack_trace",
         readonly=False,

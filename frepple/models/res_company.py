@@ -49,6 +49,12 @@ class ResCompany(models.Model):
         default=True,
         help="When checked frepple respects the reservations. When unchecked frepple can reallocate material.",
     )
+    quote_success_probability = fields.Float(
+        "Quote success probability",
+        default=80.0,
+        required=True,
+        help="Minimum percentage for the probability of success of a quote to be considered in the frepple plan.",
+    )
 
     @api.model
     def getFreppleURL(self, navbar=True, _url="/"):
