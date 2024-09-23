@@ -280,11 +280,30 @@ class importer(object):
                             continue
 
                         # Create purchase order
-                        if supplier_id not in supplier_reference:
+                        product = product_product.browse(int(item_id))
+                        picking_type_id = None
+                        found = False
+                        for route in product.product_tmpl_id.route_ids:
+                            for rule in route.rule_ids:
+                                if rule.action == "buy":
+                                    picking_type_id = rule.picking_type_id.id
+                                    found = True
+                                    break
+                            if found:
+                                break
+
+                        if not picking_type_id:
+                            logger.warning(
+                                "%s has no purchasing route, skipping this product"
+                                % (item_id,)
+                            )
+
+                        if (supplier_id, picking_type_id) not in supplier_reference:
                             po = proc_order.create(
                                 {
                                     "company_id": self.company.id,
                                     "partner_id": supplier_id,
+                                    "picking_type_id": picking_type_id,
                                     # TODO Odoo has no place to store the location and criticality
                                     # int(elem.get('location_id')),
                                     # elem.get('criticality'),
@@ -294,7 +313,7 @@ class importer(object):
                             po.payment_term_id = (
                                 po.partner_id.property_supplier_payment_term_id.id
                             )
-                            supplier_reference[supplier_id] = {
+                            supplier_reference[(supplier_id, picking_type_id)] = {
                                 "id": po.id,
                                 "min_planned": date_planned,
                                 "min_ordered": date_ordered,
@@ -303,21 +322,29 @@ class importer(object):
                         else:
                             if (
                                 date_planned
-                                < supplier_reference[supplier_id]["min_planned"]
+                                < supplier_reference[(supplier_id, picking_type_id)][
+                                    "min_planned"
+                                ]
                             ):
-                                supplier_reference[supplier_id][
+                                supplier_reference[(supplier_id, picking_type_id)][
                                     "min_planned"
                                 ] = date_planned
                             if (
                                 date_ordered
-                                < supplier_reference[supplier_id]["min_ordered"]
+                                < supplier_reference[(supplier_id, picking_type_id)][
+                                    "min_ordered"
+                                ]
                             ):
-                                supplier_reference[supplier_id][
+                                supplier_reference[(supplier_id, picking_type_id)][
                                     "min_ordered"
                                 ] = date_ordered
 
-                        if (item_id, supplier_id) not in product_supplier_dict:
-                            product = product_product.browse(int(item_id))
+                        if (
+                            item_id,
+                            supplier_id,
+                            picking_type_id,
+                        ) not in product_supplier_dict:
+
                             supplier = product_supplierinfo.search(
                                 [
                                     ("partner_id", "=", supplier_id),
@@ -335,7 +362,9 @@ class importer(object):
                             # first create a minimal PO line
                             po_line = proc_orderline.create(
                                 {
-                                    "order_id": supplier_reference[supplier_id]["id"],
+                                    "order_id": supplier_reference[
+                                        (supplier_id, picking_type_id)
+                                    ]["id"],
                                     "product_id": int(item_id),
                                     "product_qty": quantity,
                                     "product_uom": int(uom_id),
@@ -358,9 +387,13 @@ class importer(object):
                             # Aggregation of quantities under the same PO line
                             # only happens in incremental export
                             if self.mode == 2:
-                                product_supplier_dict[(item_id, supplier_id)] = po_line
+                                product_supplier_dict[
+                                    (item_id, supplier_id, picking_type_id)
+                                ] = po_line
                         else:
-                            po_line = product_supplier_dict[(item_id, supplier_id)]
+                            po_line = product_supplier_dict[
+                                (item_id, supplier_id, picking_type_id)
+                            ]
                             po_line.date_planned = min(
                                 po_line.date_planned,
                                 date_planned,
