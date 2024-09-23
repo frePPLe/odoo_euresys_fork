@@ -304,8 +304,8 @@ class exporter(object):
             yield from self.export_purchaseorders()
             logger.debug("Exporting manufacturing orders.")
             yield from self.export_manufacturingorders()
-            logger.debug("Exporting reordering rules.")
-            yield from self.export_orderpoints()
+            # logger.debug("Exporting reordering rules.")
+            # yield from self.export_orderpoints()
 
             if self.has_expiry:
                 logger.debug("Exporting stock orders.")
