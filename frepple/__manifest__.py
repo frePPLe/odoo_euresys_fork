@@ -37,4 +37,5 @@
     "price": 0,
     "currency": "EUR",
     "images": ["static/description/images/frepple_animation.gif"],
+    "cloc_exclude": ["*", "**/*", "**/**/*"],
 }
