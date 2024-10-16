@@ -2024,12 +2024,13 @@ class exporter(object):
                     "id",
                     "move_orig_ids",
                     "product_id",
-                    "date",
+                    "date",  # customer promised date / date scheduled => This is a datetime object
                     "quantity",
                     "procure_method",
                     "product_uom_qty",
                     "product_uom",
                     "state",
+                    "customer_requested_date",  # This is a date object
                 ],
             )
         }
@@ -2104,7 +2105,18 @@ class exporter(object):
                                 if self.respect_reservations
                                 else 0
                             )
-                            due = self.formatDateTime(sm["date"] or j["date_order"])
+                            due = self.formatDateTime(
+                                (
+                                    datetime.combine(
+                                        sm["customer_requested_date"],
+                                        datetime.min.time(),
+                                    )
+                                    if sm["customer_requested_date"]
+                                    else None
+                                )
+                                or sm["date"]
+                                or j["date_order"]
+                            )
 
                             yield (
                                 '<demand name=%s batch=%s quantity="%s" due="%s" priority="%s" minshipment="%s" status="%s"><item name=%s/><customer name=%s/><location name=%s/>'
