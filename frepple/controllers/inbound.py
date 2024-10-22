@@ -301,6 +301,7 @@ class importer(object):
                                 "%s has no purchasing route, skipping this product"
                                 % (item_id,)
                             )
+                            continue
 
                         if (supplier_id, picking_type_id) not in supplier_reference:
                             po = proc_order.create(
