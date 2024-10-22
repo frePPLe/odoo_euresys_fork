@@ -1293,8 +1293,40 @@ class exporter(object):
                             "min_qty": sup["min_qty"],
                             "price": max(0, sup["price"]),
                             "date_end": sup["date_end"],
+                            "supplier_id": sup["partner_id"][0],
                         }
                 if suppliers:
+
+                    # Update the priority to 1 where a blanket order exists.
+                    blanketOrderVendor = None
+                    for k, v in suppliers.items():
+                        if not blanketOrderVendor:
+                            for prline in self.generator.getData(
+                                "purchase.requisition.line",
+                                search=[
+                                    ("product_id", "=", i["id"]),
+                                    (
+                                        "requisition_id.vendor_id.id",
+                                        "=",
+                                        v["supplier_id"],
+                                    ),
+                                    ("requisition_id.state", "=", "ongoing"),
+                                ],
+                                object=True,
+                            ):
+
+                                # check if blanket order is consumed
+                                if prline.qty_ordered >= prline.product_qty:
+                                    continue
+                                blanketOrderVendor = k
+                                break
+
+                    if blanketOrderVendor:
+                        for k, v in suppliers.items():
+                            v["sequence"] = (
+                                v["sequence"] + 1 if k != blanketOrderVendor else 1
+                            )
+
                     yield "<itemsuppliers>\n"
                     for k, v in suppliers.items():
                         yield '<itemsupplier leadtime="P%dD" priority="%s" batchwindow="P%dD" size_minimum="%f" cost="%f"%s%s><supplier name=%s/></itemsupplier>\n' % (
