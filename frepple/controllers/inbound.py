@@ -97,6 +97,9 @@ class importer(object):
             change_product_qty = self.env["change.production.qty"].with_user(
                 self.actual_user
             )
+            purchase_requisition_line = self.env["purchase.requisition.line"].with_user(
+                self.actual_user
+            )
         else:
             product_product = self.env["product.product"]
             product_supplierinfo = self.env["product.supplierinfo"]
@@ -113,6 +116,7 @@ class importer(object):
             stck_warehouse = self.env["stock.warehouse"]
             stck_location = self.env["stock.location"]
             change_product_qty = self.env["change.production.qty"]
+            purchase_requisition_line = self.env["purchase.requisition.line"]
         if self.mode == 1:
             # Cancel previous draft purchase quotations
             m = self.env["purchase.order"]
@@ -344,6 +348,34 @@ class importer(object):
                             supplier_id,
                             picking_type_id,
                         ) not in product_supplier_dict:
+
+                            # Is there an active blanket order for that supplier/product combination ?
+                            po = proc_order.browse(
+                                int(
+                                    supplier_reference[(supplier_id, picking_type_id)][
+                                        "id"
+                                    ]
+                                )
+                            )
+
+                            if not po.requisition_id:
+                                for prline in purchase_requisition_line.search(
+                                    [
+                                        ("product_id", "=", product.id),
+                                        (
+                                            "requisition_id.vendor_id.id",
+                                            "=",
+                                            supplier_id,
+                                        ),
+                                        ("requisition_id.state", "=", "ongoing"),
+                                    ],
+                                ):
+
+                                    # check if blanket order is consumed
+                                    if prline.qty_ordered >= prline.product_qty:
+                                        continue
+                                    po.requisition_id = prline.requisition_id
+                                    break
 
                             supplier = product_supplierinfo.search(
                                 [
