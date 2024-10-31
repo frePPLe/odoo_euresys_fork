@@ -1229,6 +1229,7 @@ class exporter(object):
                         "product.supplierinfo",
                         search=[("product_tmpl_id", "=", tmpl["id"])],
                         fields=supplierinfo_fields,
+                        order="price, delay",
                     )
                 except Exception:
                     # subcontracting module not installed
@@ -1237,6 +1238,7 @@ class exporter(object):
                         "product.supplierinfo",
                         search=[("product_tmpl_id", "=", tmpl["id"])],
                         fields=supplierinfo_fields,
+                        order="price, delay",
                     )
                 suppliers = {}
                 for sup in results:
