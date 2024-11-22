@@ -1427,6 +1427,17 @@ class exporter(object):
                 "capacity"
             ]
 
+        manufacturing_routes = [
+            i["route_id"][0]
+            for i in self.generator.getData(
+                "stock.rule",
+                search=[("action", "=", "manufacture")],
+                fields=[
+                    "route_id",
+                ],
+            )
+        ]
+
         # Loop over all bom records
         for i in self.generator.getData(
             "mrp.bom",
@@ -1449,6 +1460,11 @@ class exporter(object):
             product_template = self.product_templates.get(i["product_tmpl_id"][0], None)
             if not product_template:
                 continue
+
+            # Is this product really manufactured ?
+            if set(product_template["route_ids"]).isdisjoint(manufacturing_routes):
+                continue
+
             uom_factor = self.convert_qty_uom(
                 1.0, i["product_uom_id"], i["product_tmpl_id"][0]
             )
