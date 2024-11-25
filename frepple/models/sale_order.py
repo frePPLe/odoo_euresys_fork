@@ -165,6 +165,9 @@ class SaleOrder(models.Model):
             if is_scenario:
                 base_url = scenario_url[0] + "/"
                 scenario = scenario_url[-1]
+                # by convention we add 2 to the scenario url
+                # to point to the dedicated quoted scenario
+                scenario = "%s%s" % (scenario[0:8], int(scenario[8:]) + 2)
             else:
                 scenario = "default"
 
