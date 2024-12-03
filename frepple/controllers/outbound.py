@@ -1193,7 +1193,7 @@ class exporter(object):
                 i["volume"] or 0,
                 i["weight"] or 0,
                 max(
-                    0, (tmpl["list_price"] + (i["price_extra"] or 0)) or 0
+                    0, (tmpl["standard_price"] + (i["price_extra"] or 0)) or 0
                 )  # Option 1:  Map "sales price" to frepple
                 #  max(0, tmpl["standard_price"]) or 0)  # Option 2: Map the "cost" to frepple
                 / self.convert_qty_uom(1.0, tmpl["uom_id"], i["product_tmpl_id"][0]),
