@@ -90,6 +90,7 @@ class importer(object):
             stck_picking_type = self.env["stock.picking.type"].with_user(
                 self.actual_user
             )
+            mfg_bom = self.env["mrp.bom"].with_user(self.actual_user)
             stck_picking = self.env["stock.picking"].with_user(self.actual_user)
             stck_move = self.env["stock.move"].with_user(self.actual_user)
             stck_warehouse = self.env["stock.warehouse"].with_user(self.actual_user)
@@ -110,6 +111,7 @@ class importer(object):
             mfg_workorder = self.env["mrp.workorder"]
             mfg_workcenter = self.env["mrp.workcenter"]
             mfg_workorder_secondary = self.env["mrp.workorder.secondary.workcenter"]
+            mfg_bom = self.env["mrp.bom"]
             stck_picking_type = self.env["stock.picking.type"]
             stck_picking = self.env["stock.picking"]
             stck_move = self.env["stock.move"]
@@ -630,21 +632,24 @@ class importer(object):
                     else:
                         # Create or update a manufacturing order
                         warehouse = int(elem.get("location_id"))
-                        picking = stck_picking_type.search(
+                        bom = mfg_bom.search(
                             [
-                                ("code", "=", "mrp_operation"),
-                                ("company_id", "=", self.company.id),
-                                ("warehouse_id", "=", warehouse),
+                                (
+                                    "id",
+                                    "=",
+                                    int(elem.get("operation").rsplit(" ", 1)[1]),
+                                ),
                             ],
                             limit=1,
                         )
+                        picking = bom.picking_type_id
 
                         # update the context with the default picking type
                         # to set correct src/dest locations
                         # Also do not create secondary work center records
                         context.update(
                             {
-                                # "default_picking_type_id": picking.id,
+                                "default_picking_type_id": picking.id,
                                 "ignore_secondary_workcenters": True,
                             }
                         )
@@ -658,7 +663,7 @@ class importer(object):
                                     "product_id": int(item_id),
                                     "company_id": self.company.id,
                                     "product_uom_id": int(uom_id),
-                                    # "picking_type_id": picking.id,
+                                    "picking_type_id": picking.id,
                                     "bom_id": int(
                                         elem.get("operation").rsplit(" ", 1)[1]
                                     ),
