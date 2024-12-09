@@ -147,7 +147,7 @@ class importer(object):
         # dictionary that stores as key the supplier id and the associated po id
         # this dict is used to aggregate the exported POs for a same supplier
         # into one PO in odoo with multiple lines
-        supplier_reference = {}
+        self.supplier_reference = {}
 
         # dictionary that stores as key a tuple (product id, supplier id)
         # and as value a poline odoo object
@@ -162,11 +162,55 @@ class importer(object):
         # Workcenters of a workorder to update
         resources = []
 
+        # self.requisition is used to track the approved bkanket order quantities
+        # as odoo only updates the BO upon PO confirmation
+        # k,v = item_id, remaining blanket quantity
+        self.requisition = {}
+
         context = (
             dict(self.env["res.users"].with_user(self.actual_user).context_get())
             if self.actual_user
             else dict(self.env.context)
         )
+
+        def createPurchaseOrderLine(
+            self,
+            po,
+            supplierinfo,
+            picking_type_id,
+            product,
+            quantity,
+            product_uom,
+            date_planned,
+        ):
+            # first create a minimal PO line
+            po_line = proc_orderline.create(
+                {
+                    "order_id": self.supplier_reference[
+                        (supplierinfo.partner_id.id, picking_type_id)
+                    ]["id"],
+                    "product_id": product.id,
+                    "product_qty": quantity,
+                    "product_uom": product_uom.id,
+                }
+            )
+            # Then let odoo computes all the fields (taxes, name, description...)
+            d = po_line._prepare_purchase_order_line(
+                product,
+                quantity,
+                product_uom,
+                self.company,
+                supplierinfo,
+                po,
+            )
+            d["date_planned"] = date_planned
+            # Finally update the PO line
+            po_line.write(d)
+
+            # Aggregation of quantities under the same PO line
+            # only happens in incremental export
+            if self.mode == 2:
+                product_supplier_dict[(item_id, supplier_id, picking_type_id)] = po_line
 
         for event, elem in iterparse(self.datafile, events=("start", "end")):
             if (
@@ -305,7 +349,10 @@ class importer(object):
                             )
                             continue
 
-                        if (supplier_id, picking_type_id) not in supplier_reference:
+                        if (
+                            supplier_id,
+                            picking_type_id,
+                        ) not in self.supplier_reference:
                             po = proc_order.create(
                                 {
                                     "company_id": self.company.id,
@@ -320,7 +367,7 @@ class importer(object):
                             po.payment_term_id = (
                                 po.partner_id.property_supplier_payment_term_id.id
                             )
-                            supplier_reference[(supplier_id, picking_type_id)] = {
+                            self.supplier_reference[(supplier_id, picking_type_id)] = {
                                 "id": po.id,
                                 "min_planned": date_planned,
                                 "min_ordered": date_ordered,
@@ -329,20 +376,20 @@ class importer(object):
                         else:
                             if (
                                 date_planned
-                                < supplier_reference[(supplier_id, picking_type_id)][
-                                    "min_planned"
-                                ]
+                                < self.supplier_reference[
+                                    (supplier_id, picking_type_id)
+                                ]["min_planned"]
                             ):
-                                supplier_reference[(supplier_id, picking_type_id)][
+                                self.supplier_reference[(supplier_id, picking_type_id)][
                                     "min_planned"
                                 ] = date_planned
                             if (
                                 date_ordered
-                                < supplier_reference[(supplier_id, picking_type_id)][
-                                    "min_ordered"
-                                ]
+                                < self.supplier_reference[
+                                    (supplier_id, picking_type_id)
+                                ]["min_ordered"]
                             ):
-                                supplier_reference[(supplier_id, picking_type_id)][
+                                self.supplier_reference[(supplier_id, picking_type_id)][
                                     "min_ordered"
                                 ] = date_ordered
 
@@ -355,13 +402,16 @@ class importer(object):
                             # Is there an active blanket order for that supplier/product combination ?
                             po = proc_order.browse(
                                 int(
-                                    supplier_reference[(supplier_id, picking_type_id)][
-                                        "id"
-                                    ]
+                                    self.supplier_reference[
+                                        (supplier_id, picking_type_id)
+                                    ]["id"]
                                 )
                             )
 
-                            if not po.requisition_id:
+                            if (
+                                not po.requisition_id
+                                and item_id not in self.requisition
+                            ):
                                 for prline in purchase_requisition_line.search(
                                     [
                                         ("product_id", "=", product.id),
@@ -378,9 +428,12 @@ class importer(object):
                                     if prline.qty_ordered >= prline.product_qty:
                                         continue
                                     po.requisition_id = prline.requisition_id
+                                    self.requisition[item_id] = (
+                                        prline.product_qty - prline.qty_ordered
+                                    )
                                     break
 
-                            supplier = product_supplierinfo.search(
+                            supplierinfo = product_supplierinfo.search(
                                 [
                                     ("partner_id", "=", supplier_id),
                                     (
@@ -394,37 +447,73 @@ class importer(object):
                                 order="min_qty desc",
                             )
                             product_uom = uom_uom.browse(int(uom_id))
-                            # first create a minimal PO line
-                            po_line = proc_orderline.create(
-                                {
-                                    "order_id": supplier_reference[
-                                        (supplier_id, picking_type_id)
-                                    ]["id"],
-                                    "product_id": int(item_id),
-                                    "product_qty": quantity,
-                                    "product_uom": int(uom_id),
-                                }
-                            )
-                            # Then let odoo computes all the fields (taxes, name, description...)
 
-                            d = po_line._prepare_purchase_order_line(
+                            # special case where the blanket order is fully depleted by this
+                            # po line. We need to create one line that depletes the BO
+                            # and another line with the remaining quantity.
+                            if (
+                                po.requisition_id
+                                and self.requisition.get(item_id, 0) < quantity
+                            ):
+                                # create the PO line
+                                createPurchaseOrderLine(
+                                    self,
+                                    po,
+                                    supplierinfo,
+                                    picking_type_id,
+                                    product,
+                                    self.requisition.get(item_id, 0),
+                                    product_uom,
+                                    date_planned,
+                                )
+
+                                # and update the quantity
+                                quantity -= self.requisition.get(item_id, 0)
+                                self.requisition[item_id] = 0
+
+                                # create a new PO if more needs to be exported
+                                if quantity > 0:
+                                    po = proc_order.create(
+                                        {
+                                            "company_id": self.company.id,
+                                            "partner_id": supplier_id,
+                                            "picking_type_id": picking_type_id,
+                                            # TODO Odoo has no place to store the location and criticality
+                                            # int(elem.get('location_id')),
+                                            # elem.get('criticality'),
+                                            "origin": "frePPLe",
+                                        }
+                                    )
+
+                                    po.payment_term_id = (
+                                        po.partner_id.property_supplier_payment_term_id.id
+                                    )
+                                    self.supplier_reference[
+                                        (supplier_id, picking_type_id)
+                                    ] = {
+                                        "id": po.id,
+                                        "min_planned": date_planned,
+                                        "min_ordered": date_ordered,
+                                        "po": po,
+                                    }
+
+                            if quantity == 0:
+                                continue
+
+                            createPurchaseOrderLine(
+                                self,
+                                po,
+                                supplierinfo,
+                                picking_type_id,
                                 product,
                                 quantity,
                                 product_uom,
-                                self.company,
-                                supplier,
-                                po,
+                                date_planned,
                             )
-                            d["date_planned"] = date_planned
-                            # Finally update the PO line
-                            po_line.write(d)
-
-                            # Aggregation of quantities under the same PO line
-                            # only happens in incremental export
-                            if self.mode == 2:
-                                product_supplier_dict[
-                                    (item_id, supplier_id, picking_type_id)
-                                ] = po_line
+                            if po.requisition_id and item_id in self.requisition:
+                                self.requisition[item_id] = max(
+                                    0, self.requisition[item_id] - quantity
+                                )
                         else:
                             po_line = product_supplier_dict[
                                 (item_id, supplier_id, picking_type_id)
@@ -433,7 +522,60 @@ class importer(object):
                                 po_line.date_planned,
                                 date_planned,
                             )
-                            po_line.product_qty = po_line.product_qty + float(quantity)
+
+                            if (
+                                po.requisition_id
+                                and self.requisition.get(item_id, 0) < quantity
+                            ):
+                                po_line.product_qty = (
+                                    po_line.product_qty
+                                    + self.requisition.get(item_id, 0)
+                                )
+
+                                # update the quantity
+                                quantity -= self.requisition.get(item_id, 0)
+                                self.requisition[item_id] = 0
+
+                                # create a new PO if more needs to be exported
+                                if quantity > 0:
+                                    po = proc_order.create(
+                                        {
+                                            "company_id": self.company.id,
+                                            "partner_id": supplier_id,
+                                            "picking_type_id": picking_type_id,
+                                            # TODO Odoo has no place to store the location and criticality
+                                            # int(elem.get('location_id')),
+                                            # elem.get('criticality'),
+                                            "origin": "frePPLe",
+                                        }
+                                    )
+
+                                    po.payment_term_id = (
+                                        po.partner_id.property_supplier_payment_term_id.id
+                                    )
+                                    createPurchaseOrderLine(
+                                        self,
+                                        po,
+                                        supplierinfo,
+                                        picking_type_id,
+                                        product,
+                                        quantity,
+                                        product_uom,
+                                        date_planned,
+                                    )
+                                    self.supplier_reference[
+                                        (supplier_id, picking_type_id)
+                                    ] = {
+                                        "id": po.id,
+                                        "min_planned": date_planned,
+                                        "min_ordered": date_ordered,
+                                        "po": po,
+                                    }
+                            else:
+                                po_line.product_qty = po_line.product_qty + float(
+                                    quantity
+                                )
+
                         countproc += 1
                     elif ordertype == "DO":
                         if not hasattr(self, "do_index"):
@@ -827,7 +969,7 @@ class importer(object):
                 root = elem
 
         # Update PO RFQ order_deadline and receipt date
-        for sup in supplier_reference.values():
+        for sup in self.supplier_reference.values():
             if sup["min_planned"]:
                 sup["po"].date_planned = sup["min_planned"]
             if sup["min_ordered"]:
