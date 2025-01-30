@@ -842,6 +842,8 @@ class exporter(object):
         res.partner.id res.partner.name -> customer.name
         """
         self.map_customers = {}
+        # We also build in the loop the supplier map
+        self.map_suppliers = {}
         first = True
         individual_inserted = False
         for i in self.generator.getData(
@@ -855,20 +857,27 @@ class exporter(object):
                 yield "<customers>\n"
                 first = False
             if i["is_company"]:
-                name = "%s %s" % (i["name"], i["id"])
-                yield "<customer name=%s/>\n" % quoteattr(name)
+                name = str(i["id"])
+                supplier = "%s %s" % (i["name"], i["id"])
+                yield '<customer name="%s" description=%s/>\n' % (
+                    name,
+                    quoteattr(i["name"][:300]),
+                )
             elif i["parent_id"] == False or i["id"] == i["parent_id"][0]:
                 name = "Individuals"
+                supplier = "Individuals"
                 if not individual_inserted:
                     yield "<customer name=%s/>\n" % quoteattr(name)
                     individual_inserted = True
             else:
                 if i["parent_id"][0] in self.map_customers:
-                    name = self.map_customers[i["parent_id"][0]]
+                    name = str(self.map_customers[i["parent_id"][0]])
+                    supplier = "%s %s" % (i["parent_id"][1], i["parent_id"][0])
                 else:
                     continue
 
             self.map_customers[i["id"]] = name
+            self.map_suppliers[i["id"]] = supplier
         if not first:
             yield "</customers>\n"
 
@@ -881,7 +890,7 @@ class exporter(object):
         res.partner.id res.partner.name -> supplier.name
         """
         first = True
-        for i in self.map_customers.values():
+        for i in self.map_suppliers.values():
             if first:
                 yield "<!-- suppliers -->\n"
                 yield "<suppliers>\n"
@@ -889,21 +898,6 @@ class exporter(object):
             yield "<supplier name=%s/>\n" % quoteattr(i)
         if not first:
             yield "</suppliers>\n"
-
-    def export_skills(self):
-        first = True
-        for i in self.generator.getData(
-            "mrp.skill",
-            fields=["name"],
-        ):
-            if first:
-                yield "<!-- skills -->\n"
-                yield "<skills>\n"
-                first = False
-            name = i["name"]
-            yield "<skill name=%s/>\n" % (quoteattr(name),)
-        if not first:
-            yield "</skills>\n"
 
     def export_workcenterskills(self):
         first = True
@@ -1244,7 +1238,7 @@ class exporter(object):
                 priority = 0
                 for sup in results:
                     priority += 1
-                    name = self.map_customers.get(sup["partner_id"][0], None)
+                    name = self.map_suppliers.get(sup["partner_id"][0], None)
                     if not name:
                         # Skip uninterested suppliers (eg archived ones)
                         continue
@@ -2389,7 +2383,7 @@ class exporter(object):
                     start = self.formatDateTime(start if start < end else end)
                     end = self.formatDateTime(end)
                     qty = mv.product_qty
-                    supplier = self.map_customers.get(j.partner_id.id)
+                    supplier = self.map_suppliers.get(j.partner_id.id)
                     if not supplier:
                         # supplier is archived :-(
                         for sup in self.generator.getData(
@@ -2407,7 +2401,7 @@ class exporter(object):
                                 "(archived) " if not sup["active"] else "",
                                 sup["id"],
                             )
-                            self.map_customers[sup["id"]] = supplier
+                            self.map_suppliers[sup["id"]] = supplier
                             break
                     if not supplier:
                         continue
@@ -2445,7 +2439,7 @@ class exporter(object):
                         i.product_uom.id,
                         self.product_product[i.product_id.id]["template"],
                     )
-                    supplier = self.map_customers.get(j.partner_id.id)
+                    supplier = self.map_suppliers.get(j.partner_id.id)
                     if not supplier:
                         # supplier is archived :-(
                         for sup in self.generator.getData(
@@ -2463,7 +2457,7 @@ class exporter(object):
                                 "(archived) " if not sup["active"] else "",
                                 sup["id"],
                             )
-                            self.map_customers[sup["id"]] = supplier
+                            self.map_suppliers[sup["id"]] = supplier
                             break
                     if not supplier:
                         continue
