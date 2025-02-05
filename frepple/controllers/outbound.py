@@ -899,6 +899,21 @@ class exporter(object):
         if not first:
             yield "</suppliers>\n"
 
+    def export_skills(self):
+        first = True
+        for i in self.generator.getData(
+            "mrp.skill",
+            fields=["name"],
+        ):
+            if first:
+                yield "<!-- skills -->\n"
+                yield "<skills>\n"
+                first = False
+            name = i["name"]
+            yield "<skill name=%s/>\n" % (quoteattr(name),)
+        if not first:
+            yield "</skills>\n"
+
     def export_workcenterskills(self):
         first = True
         for i in self.generator.getData(
