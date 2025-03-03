@@ -2004,7 +2004,9 @@ class exporter(object):
         search = (
             [
                 "&",
+                "&",
                 ("product_id", "!=", False),
+                ("product_id.product_tmpl_id.sale_ok", "=", True),
                 "|",
                 ("order_id.state", "not in", ["draft", "sent"]),
                 (
@@ -2016,7 +2018,9 @@ class exporter(object):
             if self.delta >= 999
             else [
                 "&",
+                "&",
                 ("product_id", "!=", False),
+                ("product_id.product_tmpl_id.sale_ok", "=", True),
                 "&",
                 (
                     "write_date",
