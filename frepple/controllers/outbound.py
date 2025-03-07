@@ -2193,7 +2193,12 @@ class exporter(object):
                                 ),
                                 due,
                                 priority,
-                                j["picking_policy"] == "one" and qty or 0.0,
+                                (
+                                    qty - reserved_quantity
+                                    if j["picking_policy"] == "one"
+                                    and qty - reserved_quantity > 0
+                                    else 0.0
+                                ),
                                 "open" if qty - reserved_quantity > 0 else "closed",
                                 quoteattr(product["name"]),
                                 quoteattr(customer),
