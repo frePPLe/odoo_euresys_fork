@@ -1230,6 +1230,10 @@ class exporter(object):
                     else ""
                 ),
             )
+
+            sale_ok = 1 if tmpl["sale_ok"] else 0
+            yield '<booleanproperty name="sale_ok" value="%s"/>\n' % sale_ok
+
             # Export suppliers for the item, if the item is allowed to be purchased
             if tmpl["purchase_ok"]:
                 try:
