@@ -1143,6 +1143,7 @@ class exporter(object):
             "batching_window",
             "sequence",
             "is_subcontractor",
+            "qmulti",
         ]
         first = True
         for i in self.generator.getData(
@@ -1156,6 +1157,7 @@ class exporter(object):
                 "weight",
                 "product_template_attribute_value_ids",
                 "price_extra",
+                "is_frepple_forecast",
             ],
         ):
             if first:
@@ -1234,6 +1236,9 @@ class exporter(object):
             sale_ok = 1 if tmpl["sale_ok"] else 0
             yield '<booleanproperty name="sale_ok" value="%s"/>\n' % sale_ok
 
+            is_frepple_forecast = 1 if i["is_frepple_forecast"] else 0
+            yield '<booleanproperty name="is_frepple_forecast" value="%s"/>\n' % is_frepple_forecast
+
             # Export suppliers for the item, if the item is allowed to be purchased
             if tmpl["purchase_ok"]:
                 try:
@@ -1270,6 +1275,7 @@ class exporter(object):
                                 "delay": sup["delay"],
                                 "priority": priority,
                                 "size_minimum": sup["min_qty"],
+                                "qmulti": sup["qmulti"] or 0,
                             }
                         )
                     elif (name, sup["date_start"]) in suppliers:
@@ -1290,6 +1296,10 @@ class exporter(object):
                             not r["min_qty"] or sup["min_qty"] < r["min_qty"]
                         ):
                             r["min_qty"] = sup["min_qty"]
+                        if sup["qmulti"] and (
+                            not r["qmulti"] or sup["qmulti"] < r["qmulti"]
+                        ):
+                            r["qmulti"] = sup["qmulti"]
                         if sup["price"] and (
                             not r["price"] or sup["price"] < r["price"]
                         ):
@@ -1304,6 +1314,7 @@ class exporter(object):
                             "sequence": priority,
                             "batching_window": sup["batching_window"] or 0,
                             "min_qty": sup["min_qty"],
+                            "qmulti": sup["qmulti"] or 0,
                             "price": max(0, sup["price"]),
                             "date_end": sup["date_end"],
                             "supplier_id": sup["partner_id"][0],
@@ -1312,6 +1323,9 @@ class exporter(object):
 
                     # Update the priority to 1 where a blanket order exists.
                     blanketOrderVendor = None
+                    qmin = 0
+                    qmulti = 0
+                    qmax = 0
                     for k, v in suppliers.items():
                         if not blanketOrderVendor:
                             for prline in self.generator.getData(
@@ -1332,6 +1346,9 @@ class exporter(object):
                                 if prline.qty_ordered >= prline.product_qty:
                                     continue
                                 blanketOrderVendor = k
+                                qmin = prline.qmin
+                                qmulti = prline.qmulti
+                                qmax = prline.qmax
                                 break
 
                     if blanketOrderVendor:
@@ -1339,14 +1356,19 @@ class exporter(object):
                             v["sequence"] = (
                                 v["sequence"] + 1 if k != blanketOrderVendor else 1
                             )
+                            v["min_qty"] = qmin or 1
+                            v["qmulti"] = qmulti or 0
+                            v["qmax"] = qmax or 0
 
                     yield "<itemsuppliers>\n"
                     for k, v in suppliers.items():
-                        yield '<itemsupplier leadtime="P%dD" priority="%s" batchwindow="P%dD" size_minimum="%f" cost="%f"%s%s><supplier name=%s/></itemsupplier>\n' % (
+                        yield '<itemsupplier leadtime="P%dD" priority="%s" batchwindow="P%dD" size_minimum="%f" size_multiple="%f" size_maximum="%f" cost="%f"%s%s><supplier name=%s/></itemsupplier>\n' % (
                             v["delay"],
                             v["sequence"] or 1,
                             v["batching_window"] or 0,
                             v["min_qty"],
+                            v["qmulti"] or 0,
+                            v.get("qmax", 0),
                             max(0, v["price"]),
                             (
                                 ' effective_end="%sT00:00:00"'
@@ -1463,6 +1485,9 @@ class exporter(object):
                 "days_to_prepare_mo",
                 "sequence",
                 "code",
+                "qmin",
+                "qmulti",
+                "qmax",
             ],
         ):
             # Determine the location
@@ -1548,13 +1573,16 @@ class exporter(object):
                                 i["days_to_prepare_mo"] or 0
                             )
 
-                            yield '<operation name=%s %ssize_multiple="1" duration_per="%s" posttime="P%dD" priority="%s" xsi:type="operation_time_per">\n' "<item name=%s/><location name=%s/>\n" % (
+                            yield '<operation name=%s %ssize_minimum="%s" size_multiple="%s" size_maximum="%s" duration_per="%s" posttime="P%dD" priority="%s" xsi:type="operation_time_per">\n' "<item name=%s/><location name=%s/>\n" % (
                                 quoteattr(operation),
                                 (
                                     ("description=%s " % quoteattr(i["code"]))
                                     if i["code"]
                                     else ""
                                 ),
+                                i["qmin"] or 1,
+                                i["qmulti"] or 0,
+                                i["qmax"] or 0,
                                 (
                                     self.convert_float_time(duration_per)
                                     if duration_per and duration_per > 0
@@ -1741,13 +1769,16 @@ class exporter(object):
                         # CASE 2: A routing operation is created with a suboperation for each
                         # routing step.
                         #
-                        yield '<operation name=%s %ssize_multiple="1" posttime="P%dD" priority="%s" xsi:type="operation_routing"><item name=%s/><location name=%s/>\n' % (
+                        yield '<operation name=%s %ssize_minimum="%s" size_multiple="%s" size_maximum="%s" posttime="P%dD" priority="%s" xsi:type="operation_routing"><item name=%s/><location name=%s/>\n' % (
                             quoteattr(operation),
                             (
                                 ("description=%s " % quoteattr(i["code"]))
                                 if i["code"]
                                 else ""
                             ),
+                            i["qmin"] or 1,
+                            i["qmulti"] or 0,
+                            i["qmax"] or 0,
                             self.manufacturing_lead,
                             100 + (i["sequence"] or 0),
                             quoteattr(product_buf["name"]),
