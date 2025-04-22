@@ -1489,10 +1489,7 @@ class exporter(object):
                 "qmulti",
                 "qmax",
             ],
-            search=(
-            [
-                ("picking_type_id.name", "!=", "REPAIR AND MANUFACTURING")
-            ]
+            search=([("picking_type_id.name", "!=", "REPAIR AND MANUFACTURING")]),
         ):
             # Determine the location
             location = self.mfg_location
