@@ -849,7 +849,7 @@ class exporter(object):
         for i in self.generator.getData(
             "res.partner",
             search=["|", ("parent_id", "=", False), ("parent_id.active", "=", True)],
-            fields=["name", "parent_id", "is_company"],
+            fields=["name", "parent_id", "is_company", "user_id"],
             order="parent_id desc",
         ):
             if first:
@@ -859,9 +859,14 @@ class exporter(object):
             if i["is_company"]:
                 name = str(i["id"])
                 supplier = "%s %s" % (i["name"], i["id"])
-                yield '<customer name="%s" description=%s/>\n' % (
+                yield '<customer name="%s" description=%s><owner name=%s/></customer>\n' % (
                     name,
                     quoteattr(i["name"][:300]),
+                    (
+                        quoteattr(i["user_id"][1])
+                        if i["user_id"]
+                        else quoteattr("No sales person")
+                    ),
                 )
             elif i["parent_id"] == False or i["id"] == i["parent_id"][0]:
                 name = "Individuals"
