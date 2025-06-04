@@ -2088,8 +2088,21 @@ class exporter(object):
                 "product_uom",
                 "order_id",
                 "move_ids",
+                "picking_date_ids",
             ],
         )
+
+        # Get all picking_date_ids
+        picking_dates = {
+            i["id"]: i["promised_date"]
+            for i in self.generator.getData(
+                "stock.picking.date",
+                ids=[x for d in so_line for x in d["picking_date_ids"]],
+                fields=[
+                    "promised_date",
+                ],
+            )
+        }
 
         # Get all sales orders
         so = {
@@ -2223,6 +2236,7 @@ class exporter(object):
                                 # Disable the next line in frepple < 6.25
                                 '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                                 '<stringproperty name="date_order" value="%s"/>'
+                                "%s"
                                 "</demand>\n"
                             ) % (
                                 quoteattr(sol_name),
@@ -2252,6 +2266,15 @@ class exporter(object):
                                     else "independent"
                                 ),
                                 date_order,
+                                (
+                                    '<stringproperty name="promised_date" value="%s"/>'
+                                    % self.formatDateTime(
+                                        picking_dates.get(i["picking_date_ids"][0])
+                                    )
+                                    if i["picking_date_ids"]
+                                    and picking_dates.get(i["picking_date_ids"][0])
+                                    else ""
+                                ),
                             )
                     # We are done with this line, move to the next one
                     continue
@@ -2294,6 +2317,7 @@ class exporter(object):
                 # Enable only in frepple >= 6.25
                 # '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                 '<stringproperty name="date_order" value="%s"/>'
+                "%s"
                 "</demand>\n"
             ) % (
                 quoteattr(name),
@@ -2310,6 +2334,13 @@ class exporter(object):
                 # quoteattr(i["order_id"][1]),
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
+                (
+                    '<stringproperty name="promised_date" value="%s"/>'
+                    % self.formatDateTime(picking_dates.get(i["picking_date_ids"][0]))
+                    if i["picking_date_ids"]
+                    and picking_dates.get(i["picking_date_ids"][0])
+                    else ""
+                ),
             )
         yield "</demands>\n"
 
