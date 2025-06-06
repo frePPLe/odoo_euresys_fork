@@ -2146,6 +2146,7 @@ class exporter(object):
                     "product_uom",
                     "state",
                     "customer_requested_date",  # This is a date object
+                    "date_deadline",  # this is a datetime object
                 ],
             )
         }
@@ -2268,11 +2269,8 @@ class exporter(object):
                                 date_order,
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
-                                    % self.formatDateTime(
-                                        picking_dates.get(i["picking_date_ids"][0])
-                                    )
-                                    if i["picking_date_ids"]
-                                    and picking_dates.get(i["picking_date_ids"][0])
+                                    % self.formatDateTime(sm["date_deadline"])
+                                    if sm["date_deadline"]
                                     else ""
                                 ),
                             )
@@ -2317,7 +2315,6 @@ class exporter(object):
                 # Enable only in frepple >= 6.25
                 # '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                 '<stringproperty name="date_order" value="%s"/>'
-                "%s"
                 "</demand>\n"
             ) % (
                 quoteattr(name),
@@ -2334,13 +2331,6 @@ class exporter(object):
                 # quoteattr(i["order_id"][1]),
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
-                (
-                    '<stringproperty name="promised_date" value="%s"/>'
-                    % self.formatDateTime(picking_dates.get(i["picking_date_ids"][0]))
-                    if i["picking_date_ids"]
-                    and picking_dates.get(i["picking_date_ids"][0])
-                    else ""
-                ),
             )
         yield "</demands>\n"
 
