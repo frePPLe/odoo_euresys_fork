@@ -1353,7 +1353,7 @@ class exporter(object):
                                 blanketOrderVendor = k
                                 qmin = prline.qmin
                                 qmulti = prline.qmulti
-                                qmax = prline.qmax
+                                qmax = prline.product_qty - prline.qty_ordered
                                 break
 
                     if blanketOrderVendor:
