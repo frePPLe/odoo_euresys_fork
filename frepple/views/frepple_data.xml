@@ -33,6 +33,9 @@
     <!-- Complete frePPLe UI in purchasing menu. -->
     <menuitem id="menu_frepple_web_procurement" name="Advanced planning - frePPLe" parent="purchase.menu_purchase_root" sequence="110" action="action_frepple_web" groups="frepple_user" />
 
+    <!-- Complete frePPLe UI in sales menu. -->
+    <menuitem id="menu_frepple_web_sales" name="Advanced planning - frePPLe" parent="sale.sale_menu_root" sequence="120" action="action_frepple_web" groups="frepple_user" />
+
     <!-- frePPle plan editor in manufacturing menu. -->
     <record id="action_frepple_planeditor" model="ir.actions.client">
       <field name="name">Plan editor - frePPLe</field>
