@@ -2092,18 +2092,6 @@ class exporter(object):
             ],
         )
 
-        # Get all picking_date_ids
-        picking_dates = {
-            i["id"]: i["promised_date"]
-            for i in self.generator.getData(
-                "stock.picking.date",
-                ids=[x for d in so_line for x in d["picking_date_ids"]],
-                fields=[
-                    "promised_date",
-                ],
-            )
-        }
-
         # Get all sales orders
         so = {
             i["id"]: i
@@ -2146,7 +2134,6 @@ class exporter(object):
                     "product_uom",
                     "state",
                     "customer_requested_date",  # This is a date object
-                    "date_deadline",  # this is a datetime object
                 ],
             )
         }
@@ -2269,8 +2256,8 @@ class exporter(object):
                                 date_order,
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
-                                    % self.formatDateTime(sm["date_deadline"])
-                                    if sm["date_deadline"]
+                                    % self.formatDateTime(sm["date"])
+                                    if sm["date"]
                                     else ""
                                 ),
                             )
