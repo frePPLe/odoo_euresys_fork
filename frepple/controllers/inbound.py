@@ -166,6 +166,9 @@ class importer(object):
         # as odoo only updates the BO upon PO confirmation
         # k,v = item_id, remaining blanket quantity
         self.requisition = {}
+        # self.requisitionlines is used to track the requisition lines that need to be updated
+        # for the ordered quantity
+        self.requisitionlines = []
 
         context = (
             dict(self.env["res.users"].with_user(self.actual_user).context_get())
@@ -431,6 +434,7 @@ class importer(object):
                                     self.requisition[item_id] = (
                                         prline.product_qty - prline.qty_ordered
                                     )
+                                    self.requisitionlines.append(prline)
                                     break
 
                             supplierinfo = product_supplierinfo.search(
@@ -974,6 +978,10 @@ class importer(object):
                 sup["po"].date_planned = sup["min_planned"]
             if sup["min_ordered"]:
                 sup["po"].date_order = sup["min_ordered"]
+
+        # Update blanket orders ordered quantities
+        for boline in self.requisitionlines:
+            boline._compute_ordered_qty()
 
         # Be polite, and reply to the post
         msg.append("Processed %s uploaded procurement orders" % countproc)
