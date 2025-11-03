@@ -1068,7 +1068,7 @@ class exporter(object):
         [product.product.code] product.product.name -> itemsupplier.item
         res.partner.id res.partner.name -> itemsupplier.supplier.name
         supplierinfo.delay -> itemsupplier.leadtime
-        supplierinfo.min_qty -> itemsupplier.size_minimum
+        supplierinfo.qmin -> itemsupplier.size_minimum
         supplierinfo.date_start -> itemsupplier.effective_start
         supplierinfo.date_end -> itemsupplier.effective_end
         product.product.product_tmpl_id.delay -> itemsupplier.leadtime
@@ -1141,7 +1141,7 @@ class exporter(object):
         supplierinfo_fields = [
             "partner_id",
             "delay",
-            "min_qty",
+            "qmin",
             "date_end",
             "date_start",
             "price",
@@ -1279,7 +1279,7 @@ class exporter(object):
                                 "name": name,
                                 "delay": sup["delay"],
                                 "priority": priority,
-                                "size_minimum": sup["min_qty"],
+                                "size_minimum": sup["qmin"] or 0,
                                 "qmulti": sup["qmulti"] or 0,
                             }
                         )
@@ -1297,10 +1297,8 @@ class exporter(object):
                             or sup["batching_window"] > r["batching_window"]
                         ):
                             r["batching_window"] = sup["batching_window"]
-                        if sup["min_qty"] and (
-                            not r["min_qty"] or sup["min_qty"] < r["min_qty"]
-                        ):
-                            r["min_qty"] = sup["min_qty"]
+                        if sup["qmin"] and (not r["qmin"] or sup["qmin"] < r["qmin"]):
+                            r["qmin"] = sup["qmin"]
                         if sup["qmulti"] and (
                             not r["qmulti"] or sup["qmulti"] < r["qmulti"]
                         ):
@@ -1318,7 +1316,7 @@ class exporter(object):
                             "delay": sup["delay"],
                             "sequence": priority,
                             "batching_window": sup["batching_window"] or 0,
-                            "min_qty": sup["min_qty"],
+                            "qmin": sup["qmin"],
                             "qmulti": sup["qmulti"] or 0,
                             "price": max(0, sup["price"]),
                             "date_end": sup["date_end"],
@@ -1361,7 +1359,7 @@ class exporter(object):
                             v["sequence"] = (
                                 v["sequence"] + 1 if k != blanketOrderVendor else 1
                             )
-                            v["min_qty"] = qmin or 1
+                            v["qmin"] = qmin or 1
                             v["qmulti"] = qmulti or 0
                             v["qmax"] = qmax or 0
 
@@ -1371,7 +1369,7 @@ class exporter(object):
                             v["delay"],
                             v["sequence"] or 1,
                             v["batching_window"] or 0,
-                            v["min_qty"],
+                            v["qmin"],
                             v["qmulti"] or 0,
                             v.get("qmax", 0),
                             max(0, v["price"]),
