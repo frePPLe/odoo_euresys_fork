@@ -187,32 +187,8 @@ class exporter(object):
         self.singlecompany = singlecompany
         self.delta = delta
         self.language = language
-        self.has_subcontracting = (
-            len(
-                self.generator.getData(
-                    "ir.module.module",
-                    search=[
-                        ("state", "=", "installed"),
-                        ("name", "=", "mrp_subcontracting"),
-                    ],
-                    fields=["id"],
-                )
-            )
-            > 0
-        )
-        self.has_expiry = (
-            len(
-                self.generator.getData(
-                    "ir.module.module",
-                    search=[
-                        ("state", "=", "installed"),
-                        ("name", "=", "mrp_product_expiry"),
-                    ],
-                    fields=["id"],
-                )
-            )
-            > 0
-        ) and "freppledb.shelflife" in apps
+        self.has_subcontracting = False
+        self.has_expiry = False
 
         # The mode argument defines different types of runs:
         #  - Mode 1:
@@ -233,11 +209,8 @@ class exporter(object):
 
     def run(self):
         # Check if we manage by work orders or manufacturing orders.
-        self.manage_work_orders = False
-        for rec in self.generator.getData(
-            "ir.model", search=[("model", "=", "mrp.workorder")], fields=["name"]
-        ):
-            self.manage_work_orders = True
+
+        self.manage_work_orders = True
 
         # Load some auxiliary data in memory
         self.load_company()
