@@ -1097,6 +1097,7 @@ class exporter(object):
             from product_product
             inner join product_template on product_product.product_tmpl_id = product_template.id
             where product_template.type not in ('service', 'consu')
+            and product_product.active = true
             group by coalesce(product_product.default_code,
             product_template.name->>%s,
             product_template.name->>'en_US')
