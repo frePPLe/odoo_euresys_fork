@@ -2355,9 +2355,9 @@ class exporter(object):
                         "not in",
                         # Comment out on of the following alternative approaches:
                         # Alternative I: don't send RFQs to frepple because that supply isn't certain to be available yet.
-                        ("draft", "sent", "bid", "to approve", "confirmed", "cancel"),
+                        # ("draft", "sent", "bid", "to approve", "confirmed", "cancel"),
                         # Alternative II: send RFQs to frepple to avoid that the same purchasing proposal is generated again by frepple.
-                        # ("bid", "confirmed", "cancel"),
+                        ("bid", "confirmed", "cancel"),
                     ),
                     ("order_id.state", "=", False),
                     "|",
@@ -2506,18 +2506,7 @@ class exporter(object):
                         continue
 
                     # MTO links
-                    if (
-                        self.route_mto
-                        in self.product_templates[item["template"]]["route_ids"]
-                    ):
-                        mto_so = i.move_dest_ids.group_id.sale_id
-                        batch = mto_so[0].name if mto_so else None
-                        if not batch:
-                            mto_mo = j._get_mrp_productions()
-                            if mto_mo:
-                                batch = mto_mo[0].display_name
-                    else:
-                        batch = None
+                    batch = None
 
                     yield '<operationplan reference=%s %sordertype="PO" start="%s" end="%s" quantity="%f" status="confirmed">' "<item name=%s/><location name=%s/><supplier name=%s/></operationplan>\n" % (
                         quoteattr("%s - %s" % (j.name, i.id)),
