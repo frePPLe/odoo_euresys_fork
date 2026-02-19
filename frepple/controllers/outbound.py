@@ -2357,7 +2357,7 @@ class exporter(object):
                         # Alternative I: don't send RFQs to frepple because that supply isn't certain to be available yet.
                         # ("draft", "sent", "bid", "to approve", "confirmed", "cancel"),
                         # Alternative II: send RFQs to frepple to avoid that the same purchasing proposal is generated again by frepple.
-                        ("bid", "confirmed", "cancel"),
+                        ("done", "refused", "cancel"),
                     ),
                     ("order_id.state", "=", False),
                     "|",
@@ -2371,7 +2371,7 @@ class exporter(object):
         yield "<!-- open purchase orders -->\n"
         yield "<operationplans>\n"
         for i in po_line.values():
-            if i.move_ids:
+            if i.move_ids and i.order_id.state == "purchase":
                 # METHOD 1: Use the stock move information rather than the po line
                 for mv in i.move_ids:
                     if (
