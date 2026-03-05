@@ -2061,6 +2061,7 @@ class exporter(object):
                 "order_id",
                 "move_ids",
                 "picking_date_ids",
+                "price_unit",
             ],
         )
 
@@ -2196,6 +2197,7 @@ class exporter(object):
                                 # Disable the next line in frepple < 6.25
                                 '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                                 '<stringproperty name="date_order" value="%s"/>'
+                                '<doubleproperty name="price_unit" value="%s"/>'
                                 "%s"
                                 "</demand>\n"
                             ) % (
@@ -2226,6 +2228,7 @@ class exporter(object):
                                     else "independent"
                                 ),
                                 date_order,
+                                i["price_unit"] or 0,
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
                                     % self.formatDateTime(sm["date"])
@@ -2274,6 +2277,7 @@ class exporter(object):
                 # Enable only in frepple >= 6.25
                 # '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                 '<stringproperty name="date_order" value="%s"/>'
+                '<doubleproperty name="price_unit" value="%s"/>'
                 "</demand>\n"
             ) % (
                 quoteattr(name),
@@ -2290,6 +2294,7 @@ class exporter(object):
                 # quoteattr(i["order_id"][1]),
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
+                i["price_unit"] or 0,
             )
         yield "</demands>\n"
 
