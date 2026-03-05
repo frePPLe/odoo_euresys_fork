@@ -2078,6 +2078,7 @@ class exporter(object):
                     "date_order",
                     "picking_policy",
                     "warehouse_id",
+                    "currency_id",
                 ],
             )
         }
@@ -2198,6 +2199,7 @@ class exporter(object):
                                 '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                                 '<stringproperty name="date_order" value="%s"/>'
                                 '<doubleproperty name="price_unit" value="%s"/>'
+                                '<stringproperty name="currency_id" value="%s"/>'
                                 "%s"
                                 "</demand>\n"
                             ) % (
@@ -2229,6 +2231,7 @@ class exporter(object):
                                 ),
                                 date_order,
                                 i["price_unit"] or 0,
+                                j["currency_id"][1] if j["currency"] else "",
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
                                     % self.formatDateTime(sm["date"])
@@ -2278,6 +2281,7 @@ class exporter(object):
                 # '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                 '<stringproperty name="date_order" value="%s"/>'
                 '<doubleproperty name="price_unit" value="%s"/>'
+                '<stringproperty name="currency_id" value="%s"/>'
                 "</demand>\n"
             ) % (
                 quoteattr(name),
@@ -2295,6 +2299,7 @@ class exporter(object):
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
                 i["price_unit"] or 0,
+                j["currency_id"][1] if j["currency"] else "",
             )
         yield "</demands>\n"
 
