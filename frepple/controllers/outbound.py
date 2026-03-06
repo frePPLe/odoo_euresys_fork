@@ -2062,6 +2062,7 @@ class exporter(object):
                 "move_ids",
                 "picking_date_ids",
                 "price_unit",
+                "currency_id",
             ],
         )
 
@@ -2078,7 +2079,6 @@ class exporter(object):
                     "date_order",
                     "picking_policy",
                     "warehouse_id",
-                    "currency_id",
                 ],
             )
         }
@@ -2231,7 +2231,7 @@ class exporter(object):
                                 ),
                                 date_order,
                                 i["price_unit"] or 0,
-                                j["currency_id"][1] if j["currency"] else "",
+                                i["currency_id"][1] if i["currency"] else "",
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
                                     % self.formatDateTime(sm["date"])
@@ -2299,7 +2299,7 @@ class exporter(object):
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
                 i["price_unit"] or 0,
-                j["currency_id"][1] if j["currency"] else "",
+                i["currency_id"][1] if i["currency"] else "",
             )
         yield "</demands>\n"
 
