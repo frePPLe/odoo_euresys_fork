@@ -2231,7 +2231,7 @@ class exporter(object):
                                 ),
                                 date_order,
                                 i["price_unit"] or 0,
-                                i["currency_id"][1] if i["currency"] else "",
+                                i["currency_id"][1] if i["currency_id"] else "",
                                 (
                                     '<stringproperty name="promised_date" value="%s"/>'
                                     % self.formatDateTime(sm["date"])
@@ -2299,7 +2299,7 @@ class exporter(object):
                 # "alltogether" if j["picking_policy"] == "one" else "independent",
                 date_order,
                 i["price_unit"] or 0,
-                i["currency_id"][1] if i["currency"] else "",
+                i["currency_id"][1] if i["currency_id"] else "",
             )
         yield "</demands>\n"
 
