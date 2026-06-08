@@ -36,28 +36,6 @@ class SaleOrder(models.Model):
         # needs to be unique
         use_short_names = True
 
-        self.env.cr.execute(
-            """
-            select count(*) from
-            (
-            select coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US'), count(*)
-            from product_product
-            inner join product_template on product_product.product_tmpl_id = product_template.id
-            where product_template.type not in ('service', 'consu')
-            group by coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US')
-            having count(*) > 1
-            ) t
-                """,
-            (self.env.user.lang, self.env.user.lang),
-        )
-        for i in self.env.cr.fetchall():
-            if i[0] > 0:
-                use_short_names = False
-                break
         return use_short_names
 
     def getfrePPLeItemName(self, product, use_short_names):

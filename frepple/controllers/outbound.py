@@ -1087,30 +1087,6 @@ class exporter(object):
         # needs to be unique
         use_short_names = True
 
-        self.generator.env.cr.execute(
-            """
-            select count(*) from
-            (
-            select coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US'), count(*)
-            from product_product
-            inner join product_template on product_product.product_tmpl_id = product_template.id
-            where product_template.type not in ('service', 'consu')
-            and product_product.active = true
-            group by coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US')
-            having count(*) > 1
-            ) t
-                """,
-            (self.language, self.language),
-        )
-        for i in self.generator.env.cr.fetchall():
-            if i[0] > 0:
-                use_short_names = False
-                break
-
         # Read the products
         supplierinfo_fields = [
             "partner_id",
@@ -3038,8 +3014,7 @@ class exporter(object):
         yield "<operationplans>\n"
         if isinstance(self.generator, Odoo_generator):
             # SQL query gives much better performance
-            self.generator.env.cr.execute(
-                """
+            self.generator.env.cr.execute("""
                 SELECT stock_quant.product_id,
                 stock_quant.location_id,
                 sum(stock_quant.quantity) as quantity,
@@ -3055,8 +3030,7 @@ class exporter(object):
                 stock_lot.name,
                 stock_lot.expiration_date
                 ORDER BY location_id ASC
-                """
-            )
+                """)
             data = self.generator.env.cr.fetchall()
         else:
             data = [

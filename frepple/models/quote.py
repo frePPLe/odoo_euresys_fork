@@ -7,7 +7,6 @@ from datetime import datetime
 
 from ..controllers.frepplexml import encode_jwt
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -47,15 +46,11 @@ class Quote(models.Model):
         for demand in frepple_json["demands"]:
 
             if demand.get("pegging"):
-                html = (
-                    html
-                    + """
+                html = html + """
                 <div style="margin-bottom: 40px;">
                     <h2 style="margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 3px solid #3498db; color: #3498db;">Operations for %s</h2>
                     <ul style="list-style-type: none; padding: 0;">
-            """
-                    % (demand.get("name"),)
-                )
+            """ % (demand.get("name"),)
                 for i, operation in enumerate(demand["pegging"]):
                     if (
                         i != 0
@@ -64,29 +59,21 @@ class Quote(models.Model):
                         for _ in range(
                             demand["pegging"][i - 1]["level"] - operation["level"] + 1
                         ):
-                            html = (
-                                html
-                                + """
+                            html = html + """
                                 </div>
             """
-                            )
                     if i == 0:
-                        html = (
-                            html
-                            + f"""
+                        html = html + f"""
                             <li style="background-color: #fff; margin-bottom: 5px; padding: 15px; border-left: 5px solid #3498db;">
                                 {operation["level"]} {operation["operationplan"]["operation"]["name"]}
                                 <br />Quantity: {operation["operationplan"]["quantity"]}
                                 <br />Start Date: {operation["operationplan"]["start"]}
                                 <br />End Date: {operation["operationplan"]["end"]}
             """
-                        )
 
                     else:
                         if operation["level"] == 0:
-                            html = (
-                                html
-                                + f"""
+                            html = html + f"""
                             </li>
                             <li style="background-color: #fff; margin-bottom: 5px; padding: 15px; border-left: 5px solid #3498db;">
                                 {operation["level"]} {operation["operationplan"]["operation"]["name"]}
@@ -94,11 +81,8 @@ class Quote(models.Model):
                                 <br />Start Date: {operation["operationplan"]["start"]}
                                 <br />End Date: {operation["operationplan"]["end"]}
             """
-                            )
                         else:
-                            html = (
-                                html
-                                + f"""
+                            html = html + f"""
                             <div style="margin-top: 10px; padding-left: 20px; border-left: 2px dashed #bdc3c7;">
                                 <strong>Sub-operation: {operation["level"]}</strong>
                                 <br>{operation["operationplan"]["operation"]["name"]}
@@ -106,80 +90,52 @@ class Quote(models.Model):
                                 <br>Start Date: {operation["operationplan"]["start"]}
                                 <br>End Date: {operation["operationplan"]["end"]}
             """
-                            )
 
                 for i in range(demand["pegging"][len(demand["pegging"]) - 1]["level"]):
                     html = html + "</div>"
-                html = (
-                    html
-                    + """
+                html = html + """
                         </li>
                     </ul>
                 </div>
             """
-                )
 
             if demand.get("problems"):
-                html = (
-                    html
-                    + """
+                html = html + """
                 <div style="margin-bottom: 40px;">
                     <h2 style="margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 3px solid #e74c3c; color: #e74c3c;">Problems for %s</h2>
                     <ul style="list-style-type: none; padding: 0;">
-            """
-                    % (demand.get("name"),)
-                )
+            """ % (demand.get("name"),)
                 for problem in demand["problems"]:
-                    html = (
-                        html
-                        + f"""
+                    html = html + f"""
                         <li style="background-color: #fff; margin-bottom: 5px; padding: 15px; border-left: 5px solid #e74c3c;">
                         {problem["description"]}
                         </li>
             """
-                    )
-                html = (
-                    html
-                    + """
+                html = html + """
                     </ul>
                 </div>
             """
-                )
 
             if demand.get("constraints"):
-                html = (
-                    html
-                    + """
+                html = html + """
                 <div style="margin-bottom: 40px;">
                     <h2 style="margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 3px solid #e74c3c; color: #e74c3c;">Constraints for %s</h2>
                     <ul style="list-style-type: none; padding: 0;">
-            """
-                    % (demand.get("name"),)
-                )
+            """ % (demand.get("name"),)
                 for constraint in demand["constraints"]:
-                    html = (
-                        html
-                        + f"""
+                    html = html + f"""
                         <li style="background-color: #fff; margin-bottom: 5px; padding: 15px; border-left: 5px solid #e74c3c;">
                         {constraint["description"]}
                         </li>
         """
-                    )
-            html = (
-                html
-                + """
+            html = html + """
                 </ul>
             </div>
         """
-            )
 
-        (
-            html
-            + html
-            + """
+        (html + html + """
         </div>
-        """
-        )
+        """)
         return html
 
     def use_product_short_names(self):
@@ -188,28 +144,6 @@ class Quote(models.Model):
         # needs to be unique
         use_short_names = True
 
-        self.env.cr.execute(
-            """
-            select count(*) from
-            (
-            select coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US'), count(*)
-            from product_product
-            inner join product_template on product_product.product_tmpl_id = product_template.id
-            where product_template.type not in ('service', 'consu')
-            group by coalesce(product_product.default_code,
-            product_template.name->>%s,
-            product_template.name->>'en_US')
-            having count(*) > 1
-            ) t
-                """,
-            (self.env.user.lang, self.env.user.lang),
-        )
-        for i in self.env.cr.fetchall():
-            if i[0] > 0:
-                use_short_names = False
-                break
         return use_short_names
 
     def getfrePPLeItemName(self, product, use_short_names):
