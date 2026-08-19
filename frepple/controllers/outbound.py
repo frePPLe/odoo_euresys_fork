@@ -2174,7 +2174,7 @@ class exporter(object):
                                 if self.respect_reservations
                                 else 0
                             )
-                            due = self.formatDateTime(
+                            requested_date = self.formatDateTime(
                                 (
                                     datetime.combine(
                                         sm["customer_requested_date"],
@@ -2187,11 +2187,16 @@ class exporter(object):
                                 or j["date_order"]
                             )
 
+                            promised_date = self.formatDateTime(
+                                sm["date"] or j["date_order"]
+                            )
+
                             yield (
                                 '<demand name=%s batch=%s quantity="%s" due="%s" priority="%s" minshipment="%s" status="%s"><item name=%s/><customer name=%s/><location name=%s/>'
                                 # Disable the next line in frepple < 6.25
                                 '<owner name=%s policy="%s" xsi:type="demand_group"/>'
                                 '<stringproperty name="date_order" value="%s"/>'
+                                '<stringproperty name="requested_date" value="%s"/>'
                                 '<doubleproperty name="price_unit" value="%s"/>'
                                 '<stringproperty name="currency_id" value="%s"/>'
                                 "%s"
@@ -2204,7 +2209,7 @@ class exporter(object):
                                     if qty - reserved_quantity > 0
                                     else qty
                                 ),
-                                due,
+                                promised_date,
                                 priority,
                                 (
                                     qty - reserved_quantity
@@ -2224,12 +2229,15 @@ class exporter(object):
                                     else "independent"
                                 ),
                                 date_order,
+                                requested_date,
                                 i["price_unit"] or 0,
                                 i["currency_id"][1] if i["currency_id"] else "",
                                 (
-                                    '<stringproperty name="promised_date" value="%s"/>'
-                                    % self.formatDateTime(sm["date"])
-                                    if sm["date"]
+                                    (
+                                        '<stringproperty name="promised_date" value="%s"/>'
+                                        % promised_date
+                                    )
+                                    if promised_date
                                     else ""
                                 ),
                             )
