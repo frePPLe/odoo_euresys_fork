@@ -1582,6 +1582,7 @@ class exporter(object):
                                 "product_id",
                                 "operation_id",
                                 "bom_product_template_attribute_value_ids",
+                                "apply_scrap_rate",
                             ],
                         ):
                             # check if this BOM line applies to this variant
@@ -1610,6 +1611,11 @@ class exporter(object):
                                     self.product_product[k["product_id"][0]][
                                         "template"
                                     ],
+                                )
+                                * (
+                                    (1 - (i["scrap_rate"] or 0))
+                                    if not k["apply_scrap_rate"]
+                                    else 1
                                 )
                                 for k in fl[j]
                             )
@@ -1770,6 +1776,7 @@ class exporter(object):
                                 "product_id",
                                 "operation_id",
                                 "bom_product_template_attribute_value_ids",
+                                "apply_scrap_rate",
                             ],
                         ):
                             # check if this BOM line applies to this variant
@@ -1790,6 +1797,10 @@ class exporter(object):
                                 j["product_qty"],
                                 j["product_uom_id"],
                                 self.product_product[j["product_id"][0]]["template"],
+                            ) * (
+                                (1 - (i["scrap_rate"] or 0))
+                                if not j["apply_scrap_rate"]
+                                else 1
                             )
                             if (
                                 j["product_id"][0],
@@ -2678,6 +2689,11 @@ class exporter(object):
                     consumed_item = self.product_product.get(mv.product_id.id, None)
                     if not consumed_item:
                         continue
+                    apply_scrap = mv.product_id.id in [
+                        bl.product_id.id
+                        for bl in i.bom_id.bom_line_ids
+                        if bl.apply_scrap_rate
+                    ]
                     qty_flow = self.convert_qty_uom(
                         max(
                             0,
@@ -2686,7 +2702,7 @@ class exporter(object):
                         ),
                         mv.product_uom.id,
                         consumed_item["template"],
-                    )
+                    ) * ((1 - (i.bom_id.scrap_rate or 0)) if not apply_scrap else 1)
                     # subtract the reserved quantity if product is twice in the BOM
                     reserved_quantity[(i["name"], mv.product_id.id)] = max(
                         0,
@@ -2763,6 +2779,12 @@ class exporter(object):
                         elif not first_wo:
                             continue
 
+                        apply_scrap = mv.product_id.id in [
+                            bl.product_id.id
+                            for bl in i.bom_id.bom_line_ids
+                            if bl.apply_scrap_rate
+                        ]
+
                         qty_flow = self.convert_qty_uom(
                             max(
                                 0,
@@ -2771,7 +2793,7 @@ class exporter(object):
                             ),
                             mv.product_uom.id,
                             item["template"],
-                        )
+                        ) * ((1 - (i.bom_id.scrap_rate or 0)) if not apply_scrap else 1)
                         # subtract the reserved quantity if product is twice in the BOM
                         reserved_quantity[(i["name"], mv["product_id"][0])] = max(
                             0,

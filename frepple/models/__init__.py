@@ -5,6 +5,7 @@ from . import product_supplierinfo_inherit
 from . import sale_order
 from . import quote
 from . import mrp_bom_inherit
+from . import mrp_bom_line_inherit
 from . import mrp_skill
 from . import mrp_workcenter_inherit
 from . import mrp_routing_workcenter_inherit
