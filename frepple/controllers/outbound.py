@@ -2789,7 +2789,16 @@ class exporter(object):
                             max(
                                 0,
                                 mv.product_qty
-                                - (mv.quantity if self.respect_reservations else 0),
+                                - (
+                                    mv.product_qty
+                                    if (
+                                        mv.picking_id.state == "assigned"
+                                        and self.respect_reservations
+                                    )
+                                    else (
+                                        mv.quantity if self.respect_reservations else 0
+                                    )
+                                ),
                             ),
                             mv.product_uom.id,
                             item["template"],
