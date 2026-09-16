@@ -2792,8 +2792,7 @@ class exporter(object):
                                 - (
                                     mv.product_qty
                                     if (
-                                        mv.state == "waiting"
-                                        and mv.move_orig_ids
+                                        mv.move_orig_ids
                                         and all(
                                             s.picking_id.state == "assigned"
                                             for s in mv.move_orig_ids
