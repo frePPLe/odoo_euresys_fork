@@ -2263,8 +2263,7 @@ class exporter(object):
                                 quoteattr(location),
                                 # Disable the next 2 lines in frepple < 6.25
                                 quoteattr(i["order_id"][1]),
-                                picking_policy
-                                ),
+                                picking_policy,
                                 date_order,
                                 requested_date,
                                 i["price_unit"] or 0,
