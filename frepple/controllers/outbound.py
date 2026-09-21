@@ -2112,7 +2112,29 @@ class exporter(object):
                     "product_uom_qty",
                     "product_uom",
                     "state",
+                    "picking_id",
                     "customer_requested_date",  # This is a date object
+                ],
+            )
+        }
+
+        stock_picking_dict = {
+            i["id"]: i["move_type"]
+            for i in self.generator.getData(
+                "stock.picking",
+                search=[
+                    (
+                        "id",
+                        "in",
+                        [
+                            stock_moves_dict[sm]["picking_id"][0]
+                            for sm in stock_moves_dict
+                            if stock_moves_dict[sm]["picking_id"]
+                        ],
+                    )
+                ],
+                fields=[
+                    "move_type",  # direct: as soon as possible / one: When all products are ready
                 ],
             )
         }
@@ -2202,6 +2224,13 @@ class exporter(object):
                                 sm["date"] or j["date_order"]
                             )
 
+                            picking_policy = (
+                                "alltogether"
+                                if sm["picking_id"]
+                                and stock_picking_dict.get(sm["picking_id"][0]) == "one"
+                                else "independent"
+                            )
+
                             yield (
                                 '<demand name=%s batch=%s quantity="%s" due="%s" priority="%s" minshipment="%s" status="%s"><item name=%s/><customer name=%s/><location name=%s/>'
                                 # Disable the next line in frepple < 6.25
@@ -2224,7 +2253,7 @@ class exporter(object):
                                 priority,
                                 (
                                     qty - reserved_quantity
-                                    if j["picking_policy"] == "one"
+                                    if picking_policy == "alltogether"
                                     and qty - reserved_quantity > 0
                                     else 0.0
                                 ),
@@ -2234,10 +2263,7 @@ class exporter(object):
                                 quoteattr(location),
                                 # Disable the next 2 lines in frepple < 6.25
                                 quoteattr(i["order_id"][1]),
-                                (
-                                    "alltogether"
-                                    if j["picking_policy"] == "one"
-                                    else "independent"
+                                picking_policy
                                 ),
                                 date_order,
                                 requested_date,
