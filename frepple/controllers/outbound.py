@@ -2838,8 +2838,9 @@ class exporter(object):
                                     mv.product_qty
                                     if (
                                         mv.move_orig_ids
-                                        and all(
-                                            s.picking_id.state == "assigned"
+                                        and not any(
+                                            s.picking_id.state
+                                            in ["confirmed", "waiting"]
                                             for s in mv.move_orig_ids
                                         )
                                         and self.respect_reservations
