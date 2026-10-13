@@ -2557,7 +2557,7 @@ class exporter(object):
                     batch = None
 
                     yield '<operationplan reference=%s %sordertype="PO" start="%s" end="%s" quantity="%f" status="confirmed">' "<item name=%s/><location name=%s/><supplier name=%s/></operationplan>\n" % (
-                        quoteattr("%s - %s" % (j.name, i.id)),
+                        quoteattr("%s - %s (RFQ)" % (j.name, i.id)),
                         "batch=%s " % quoteattr(batch) if batch else "",
                         start,
                         end,
