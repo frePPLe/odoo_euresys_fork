@@ -1099,6 +1099,7 @@ class exporter(object):
             "sequence",
             "is_subcontractor",
             "qmulti",
+            "product_uom",
         ]
         first = True
         for i in self.generator.getData(
@@ -1215,7 +1216,24 @@ class exporter(object):
                     )
                 suppliers = {}
                 priority = 0
+
                 for sup in results:
+
+                    # get the factor if the purchasing uom is different from the default product uom
+                    if (
+                        sup["product_uom"]
+                        and tmpl["uom_id"]
+                        and sup["product_uom"][0] != tmpl["uom_id"][0]
+                    ):
+                        try:
+                            factor = self.convert_qty_uom(
+                                1, sup["product_uom"], tmpl["id"]
+                            )
+                        except:
+                            factor = 1
+                    else:
+                        factor = 1
+
                     priority += 1
                     name = self.map_suppliers.get(sup["partner_id"][0], None)
                     if not name:
@@ -1247,16 +1265,18 @@ class exporter(object):
                             or sup["batching_window"] > r["batching_window"]
                         ):
                             r["batching_window"] = sup["batching_window"]
-                        if sup["qmin"] and (not r["qmin"] or sup["qmin"] < r["qmin"]):
-                            r["qmin"] = sup["qmin"]
+                        if sup["qmin"] and (
+                            not r["qmin"] or sup["qmin"] * factor < r["qmin"]
+                        ):
+                            r["qmin"] = sup["qmin"] * factor
                         if sup["qmulti"] and (
-                            not r["qmulti"] or sup["qmulti"] < r["qmulti"]
+                            not r["qmulti"] or sup["qmulti"] * factor < r["qmulti"]
                         ):
-                            r["qmulti"] = sup["qmulti"]
+                            r["qmulti"] = sup["qmulti"] * factor
                         if sup["price"] and (
-                            not r["price"] or sup["price"] < r["price"]
+                            not r["price"] or sup["price"] / factor < r["price"]
                         ):
-                            r["price"] = sup["price"]
+                            r["price"] = sup["price"] / factor
                         if r["date_end"] and (
                             not sup["date_end"] or sup["date_end"] > r["date_end"]
                         ):
@@ -1266,9 +1286,9 @@ class exporter(object):
                             "delay": sup["delay"],
                             "sequence": priority,
                             "batching_window": sup["batching_window"] or 0,
-                            "qmin": sup["qmin"],
-                            "qmulti": sup["qmulti"] or 0,
-                            "price": max(0, sup["price"]),
+                            "qmin": sup["qmin"] * factor,
+                            "qmulti": (sup["qmulti"] or 0) * factor,
+                            "price": max(0, sup["price"]) / factor,
                             "date_end": sup["date_end"],
                             "supplier_id": sup["partner_id"][0],
                         }
